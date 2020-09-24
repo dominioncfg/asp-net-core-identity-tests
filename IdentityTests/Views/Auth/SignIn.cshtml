@@ -1,0 +1,47 @@
+﻿@model SignInViewModel
+@{
+    ViewBag.Title = "SignIn";
+}
+
+
+<div>
+    <form asp-action="SignIn" method="post" asp-route-ReturnUrl="@Model.ReturnUrl">
+        <div>
+            <h2>Sign In</h2>
+        </div>
+        <div>
+            <div asp-validation-summary="All"></div>
+        </div>
+        <div>
+            <div>
+                <div class="field">
+                    <label asp-for="Email"></label>
+                </div>
+                <div>
+                    <input asp-for="Email" />
+                </div>
+            </div>
+
+            <div>
+                <div class="field">
+                    <label asp-for="Password"></label>
+                </div>
+                <div>
+                    <input asp-for="Password" />
+                </div>
+            </div>
+
+            <div>
+                <div class="field">
+                    <label asp-for="RememberMe"></label>
+                </div>
+                <div>
+                    <input asp-for="RememberMe" />
+                </div>
+            </div>
+        </div>
+        <div>
+            <input type="submit" value="Log In" />
+        </div>
+    </form>
+</div>
