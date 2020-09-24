@@ -35,6 +35,7 @@ namespace IdentityTests
                 .AddIdentity<IdentityUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDBContext>()
                 .AddDefaultTokenProviders();
+            services.Configure<DataProtectionTokenProviderOptions>(opt => opt.TokenLifespan = TimeSpan.FromHours(2));
             services.Configure<IdentityOptions>(options =>
             {
                 options.Password.RequiredLength = 6;

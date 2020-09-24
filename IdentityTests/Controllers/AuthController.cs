@@ -15,8 +15,8 @@ namespace IdentityTests.Controllers
         private readonly IEmailService _emailService;
 
         public AuthController(
-                                UserManager<IdentityUser> userManager, 
-                                SignInManager<IdentityUser> signInManager, 
+                                UserManager<IdentityUser> userManager,
+                                SignInManager<IdentityUser> signInManager,
                                 IEmailService emailService
                              )
         {
@@ -161,6 +161,79 @@ namespace IdentityTests.Controllers
         {
             await _signInManager.SignOutAsync();
             return RedirectToAction(nameof(SignIn));
+        }
+        #endregion
+
+        #region Forgot Password
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            var viewModel = new ForgotPasswordViewModel();
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel viewModel)
+        {
+            IActionResult result = View(viewModel);
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(viewModel.Email);
+                if (user == null)
+                {
+                    ModelState.AddModelError("Email", "There is no account for that email");
+                }
+                else
+                {
+                    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                    var callback = Url.ActionLink(nameof(ResetPassword), "Auth", new { token, email = user.Email });
+                    string body = $"<a href='{callback}'>Click to reset your password</a> or open in the browser {callback}";
+                    await _emailService.SendEmailAsync("info@mydomain.com", user.Email, "Reset Your Account Password", body);
+                    result = View("ForgotPasswordConfirmation");
+                }
+            }
+            return result;
+        }
+
+        [HttpGet]
+        public IActionResult ResetPassword(string email, string token)
+        {
+            var viewModel = new ResetPasswordViewModel() { Email = email, Token = token };
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel viewModel)
+        {
+            IActionResult result = View(viewModel);
+
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(viewModel.Email);
+                if (user != null)
+                {
+                    var resetPassResult = await _userManager.ResetPasswordAsync(user, viewModel.Token, viewModel.Password);
+                    if (!resetPassResult.Succeeded)
+                    {
+                        foreach (var error in resetPassResult.Errors)
+                        {
+                            ModelState.TryAddModelError(error.Code, error.Description);
+                        }
+                    }
+                    else
+                    {
+                        result = RedirectToAction(nameof(SignIn));
+                    }
+                }
+                else
+                {
+                    ModelState.AddModelError("Email", "There is no account for that email");
+                }
+            }
+
+            return result;
         }
         #endregion
 
