@@ -1,4 +1,5 @@
-﻿using IdentityTests.Models;
+﻿using IdentityTests.Configuration;
+using IdentityTests.Models;
 using IdentityTests.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -13,6 +14,7 @@ namespace IdentityTests.Components
         {
             var userPrincipal = User as ClaimsPrincipal;
             string strRole = userPrincipal?.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Role)?.Value;
+            string fullName = userPrincipal?.Claims.FirstOrDefault(claim => claim.Type == ConfigurationConstants.Claims.FullName)?.Value;
 
             Roles role = Roles.RegularUser;
             if (!string.IsNullOrEmpty(strRole))
@@ -23,8 +25,9 @@ namespace IdentityTests.Components
             NavBarViewModel viewModel = new NavBarViewModel()
             {
                 IsLoggedIn = User.Identity.IsAuthenticated,
-                UserName = User.Identity.Name,
-                CurrentRole = role
+                UserName = User.Identity.Name,                
+                CurrentRole = role,
+                UserFullName = fullName,                
             };
             return View(viewModel);
         }

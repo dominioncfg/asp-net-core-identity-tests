@@ -1,4 +1,5 @@
 using IdentityTests.Data;
+using IdentityTests.Infra;
 using IdentityTests.Models;
 using IdentityTests.Services.Email;
 using Microsoft.AspNetCore.Builder;
@@ -36,7 +37,7 @@ namespace IdentityTests
                 .AddEntityFrameworkStores<UsersDBContext>()
                 .AddDefaultTokenProviders();
             services.Configure<DataProtectionTokenProviderOptions>(opt => opt.TokenLifespan = TimeSpan.FromHours(2));
-            
+
             services.Configure<IdentityOptions>(options =>
             {
                 options.Password.RequiredLength = 6;
@@ -76,6 +77,8 @@ namespace IdentityTests
 
             services.AddTransient<IEmailService, EmailService>();
             services.AddControllersWithViews();
+
+            services.AddScoped<IUserClaimsPrincipalFactory<AppIdentityUser>, AppClaimsPrincipalFactory>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
