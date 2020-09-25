@@ -10,13 +10,13 @@ namespace IdentityTests.Controllers
 {
     public class AuthController : Controller
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<AppIdentityUser> _userManager;
+        private readonly SignInManager<AppIdentityUser> _signInManager;
         private readonly IEmailService _emailService;
 
         public AuthController(
-                                UserManager<IdentityUser> userManager,
-                                SignInManager<IdentityUser> signInManager,
+                                UserManager<AppIdentityUser> userManager,
+                                SignInManager<AppIdentityUser> signInManager,
                                 IEmailService emailService
                              )
         {
@@ -25,7 +25,7 @@ namespace IdentityTests.Controllers
             this._signInManager = signInManager;
         }
 
-        private async Task SendConfirmationEmailAsync(IdentityUser user)
+        private async Task SendConfirmationEmailAsync(AppIdentityUser user)
         {
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var confirmationLink = Url.ActionLink(nameof(ConfirmEmail), "Auth", new { userId = user.Id, @token = token });
@@ -41,33 +41,38 @@ namespace IdentityTests.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SignUp(SignUpViewModel model)
         {
+            IActionResult result = View(model);
             if (ModelState.IsValid)
             {
                 var existingUser = await _userManager.FindByEmailAsync(model.Email);
                 if (existingUser == null)
                 {
-                    var user = new IdentityUser
+                    var user = new AppIdentityUser
                     {
+                        UserName = model.UserName,
                         Email = model.Email,
-                        UserName = model.Email
+                        FirstName = model.FirstName,
+                        LastName = model.LastName,
+                        Age = model.Age,
                     };
 
-                    var result = await _userManager.CreateAsync(user, model.Password);
+                    var creteResult = await _userManager.CreateAsync(user, model.Password);
 
-                    if (result.Succeeded)
+                    if (creteResult.Succeeded)
                     {
                         user = await _userManager.FindByEmailAsync(model.Email);
-                        await SendConfirmationEmailAsync(user);
 
+                        await SendConfirmationEmailAsync(user);
                         await _userManager.AddToRoleAsync(user, Roles.RegularUser.ToString());
 
-                        return RedirectToAction(nameof(SignIn));
+                        result = RedirectToAction(nameof(SignIn));
                     }
                     else
                     {
-                        ModelState.AddModelError(nameof(SignUp), string.Join(". ", result.Errors.Select(x => x.Description)));
+                        ModelState.AddModelError(nameof(SignUp), string.Join(". ", creteResult.Errors.Select(x => x.Description)));
                     }
                 }
                 else
@@ -76,7 +81,7 @@ namespace IdentityTests.Controllers
                 }
             }
 
-            return View(model);
+            return result;
         }
         #endregion
 
@@ -113,45 +118,50 @@ namespace IdentityTests.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> SignIn(SignInViewModel model, [FromQuery(Name = "ReturnUrl")] string returnUrl = null)
         {
+            IActionResult result = View(model);
+
             if (ModelState.IsValid)
             {
-                string userName = model.Email;
-                var result = await _signInManager.PasswordSignInAsync(userName, model.Password, model.RememberMe, false);
-                if (result.Succeeded)
+                string email = model.Email;
+                var user = await _userManager.FindByEmailAsync(email);
+
+                if (user != null)
                 {
-                    if (!string.IsNullOrEmpty(returnUrl))
+                    var signInResult = await _signInManager.PasswordSignInAsync(user.UserName, model.Password, model.RememberMe, false);
+                    if (signInResult.Succeeded)
                     {
-                        return LocalRedirect(returnUrl);
+                        if (!string.IsNullOrEmpty(returnUrl))
+                        {
+                            result = LocalRedirect(returnUrl);
+                        }
+                        else
+                        {
+                            result = RedirectToAction("Index", "Home");
+                        }
                     }
                     else
                     {
-                        return RedirectToAction("Index", "Home");
+                        bool isConfirmed = await _userManager.IsEmailConfirmedAsync(user);
+                        if (!isConfirmed)
+                        {
+                            await this.SendConfirmationEmailAsync(user);
+                            ModelState.AddModelError("Login", "Your Account is not Confirmed! Check your Email!");
+                        }
+                        else
+                        {
+                            ModelState.AddModelError("Login", "Invalid Password.");
+                        }
                     }
                 }
                 else
                 {
-                    var existingUser = await _userManager.FindByEmailAsync(model.Email);
-                    bool isConfirmationIssue = false;
-                    if (existingUser != null)
-                    {
-                        bool isConfirmed = await _userManager.IsEmailConfirmedAsync(existingUser);
-                        if (!isConfirmed)
-                        {
-                            await this.SendConfirmationEmailAsync(existingUser);
-                            isConfirmationIssue = true;
-                        }
-                    }
-
-                    if (!isConfirmationIssue)
-                    {
-                        ModelState.AddModelError("Login", "Cannot login.");
-                    }
-
+                    ModelState.AddModelError("Email", "Invalid User Account.");
                 }
             }
-            return View(model);
+            return result;
         }
         #endregion
 

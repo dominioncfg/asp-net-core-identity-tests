@@ -25,17 +25,18 @@ namespace IdentityTests
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<ApplicationDBContext>(o =>
+            services.AddDbContext<UsersDBContext>(o =>
             {
                 string userCS = _configuration["ConnectionStrings:UsersDb"];
                 o.UseSqlServer(userCS);
             });
 
             services
-                .AddIdentity<IdentityUser, IdentityRole>()
-                .AddEntityFrameworkStores<ApplicationDBContext>()
+                .AddIdentity<AppIdentityUser, AppIdentityRole>()
+                .AddEntityFrameworkStores<UsersDBContext>()
                 .AddDefaultTokenProviders();
             services.Configure<DataProtectionTokenProviderOptions>(opt => opt.TokenLifespan = TimeSpan.FromHours(2));
+            
             services.Configure<IdentityOptions>(options =>
             {
                 options.Password.RequiredLength = 6;
@@ -46,6 +47,7 @@ namespace IdentityTests
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
 
                 options.SignIn.RequireConfirmedEmail = true;
+                options.User.RequireUniqueEmail = true;
             });
 
             services.AddAuthorization(options =>
@@ -94,7 +96,7 @@ namespace IdentityTests
                 endpoints.MapDefaultControllerRoute();
             });
 
-            IdentitySeedData.CreateIdentitySeedData(app.ApplicationServices, _configuration);
+            IdentitySeedData.CreateIdentitySeedData(app.ApplicationServices);
         }
     }
 }
